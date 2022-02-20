@@ -1,17 +1,36 @@
 #!/bin/bash
-lsblk
-echo "Kerlek add meg a telepitett rendszert tartalmazo blokk eszkozt!"
-echo "Pelda: sda1"
-read blkdev
-echo "/dev/$blkdev csatolasa /mnt ala!"
-mount /dev/$blkdev /mnt
-mount --types proc /proc /mnt/proc
-mount --bind /run /mnt/run
-mount --make-slave /mnt/run
-mount --rbind /sys /mnt/sys
-mount --rbind /dev /mnt/dev
-mount -t tmpfs /tmp /mnt/tmp
+if [ "$EUID" -ne 0 ]; then
+	echo -e "\e[91m[HIBA] \e[39mFuttass rootkent!"
+	exit
+fi
+if ! [[ -f "/tmp/chroot.mounted" ]]; then
+	lsblk
+	echo "Kerlek add meg a telepitett rendszert tartalmazo blokk eszkozt!"
+	echo "Pelda: sda1"
+	read blkdev
+	echo "/dev/$blkdev csatolasa /mnt ala!"
+fi
+if ! mountpoint -q "/mnt"; then 
+	mount /dev/$blkdev /mnt
+fi
+if ! mountpoint -q "/mnt/proc"; then
+	mount --types proc /proc /mnt/proc
+fi
+if ! mountpoint -q "/mnt/run"; then
+	mount --bind /run /mnt/run
+	mount --make-slave /mnt/run
+fi
+if ! mountpoint -q "/mnt/sys"; then
+	mount --rbind /sys /mnt/sys
+fi
+if ! mountpoint -q "/mnt/dev"; then
+	mount --rbind /dev /mnt/dev
+fi
+if ! mountpoint -q "/mnt/tmp"; then
+	mount -t tmpfs /tmp /mnt/tmp
+fi
+touch /tmp/chroot.mounted
 echo "source /etc/profile "> /mnt/tmp/chroot_setup.sh
-echo "export PS1=\"\[\e[33m\][UHU CHROOT]\[\e[m\] \u@\h \[\e[31m\]-->\[\e[m\] \W \"" >> /mnt/tmp/chroot_setup.sh
+echo "export PS1=\"\[\e[33m\][UHU CHROOT]\[\e[m\] \u@\h \[\e[31m\]-->\[\e[m\] \w \"" >> /mnt/tmp/chroot_setup.sh
 chmod +x /mnt/tmp/chroot_setup.sh
 chroot /mnt /bin/bash --init-file /tmp/chroot_setup.sh
